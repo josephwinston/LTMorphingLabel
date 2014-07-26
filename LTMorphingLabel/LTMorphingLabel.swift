@@ -42,8 +42,10 @@ enum LTMorphingEffect: Int, Printable {
     case Fall
     case Pixelate
     case Sparkle
+    case Burn
+    case Anvil
     
-    static let allValues = ["Scale", "Evaporate", "Fall", "Pixelate", "Sparkle"]
+    static let allValues = ["Scale", "Evaporate", "Fall", "Pixelate", "Sparkle", "Burn", "Anvil"]
     
     var description: String {
     get {
@@ -56,6 +58,10 @@ enum LTMorphingEffect: Int, Printable {
             return "Pixelate"
         case .Sparkle:
             return "Sparkle"
+        case .Burn:
+            return "Burn"
+        case .Anvil:
+            return "Anvil"
         default:
             return "Scale"
         }
@@ -91,16 +97,16 @@ typealias LTMorphingManipulateProgressClosure = (index: Int, progress: Float, is
 
 
 @objc protocol LTMorphingLabelDelegate {
-    @optional func morphingDidStart(label: LTMorphingLabel)
-    @optional func morphingDidComplete(label: LTMorphingLabel)
-    @optional func morphingOnProgress(label: LTMorphingLabel, _ progress: Float)
+    optional func morphingDidStart(label: LTMorphingLabel)
+    optional func morphingDidComplete(label: LTMorphingLabel)
+    optional func morphingOnProgress(label: LTMorphingLabel, _ progress: Float)
 }
 
 
 class LTMorphingLabel: UILabel {
     
     var morphingProgress: Float = 0.0
-    var morphingDuration: Float = 0.3
+    var morphingDuration: Float = 0.6
     var morphingCharacterDelay: Float = 0.026
     var morphingEffect: LTMorphingEffect = .Scale
     var delegate: LTMorphingLabelDelegate?
@@ -113,6 +119,7 @@ class LTMorphingLabel: UILabel {
     var _originText = ""
     var _currentFrame = 0
     var _totalFrames = 0
+    var _totalDelayFrames = 0
     var _totalWidth: Float = 0.0
     let _characterOffsetYRatio = 1.1
     var _originRects = Array<CGRect>()
@@ -132,6 +139,7 @@ class LTMorphingLabel: UILabel {
         
         morphingProgress = 0.0
         _currentFrame = 0
+        _totalFrames = 0
         
         if _originText != text {
             displayLink.paused = false
@@ -146,7 +154,7 @@ class LTMorphingLabel: UILabel {
     }
     }
     
-    @lazy var displayLink: CADisplayLink = {
+    lazy var displayLink: CADisplayLink = {
         let _displayLink = CADisplayLink(
             target: self,
             selector: Selector.convertFromStringLiteral("_displayFrameTick"))
@@ -155,21 +163,27 @@ class LTMorphingLabel: UILabel {
             forMode: NSRunLoopCommonModes)
         return _displayLink
         }()
+    
+    lazy var emitterView: LTEmitterView = {
+        let _emitterView = LTEmitterView(frame: self.bounds)
+        self.addSubview(_emitterView)
+        return _emitterView
+        }()
 }
 
 // Animation
 extension LTMorphingLabel {
     
     func _displayFrameTick() {
-        let s = self.text as String
-        let totalDelay = Float(countElements(s) + countElements(_originText)) * morphingCharacterDelay
-        let framesForCharacterDelay = Int(ceilf(totalDelay))
-        
         if displayLink.duration > 0.0 && _totalFrames == 0 {
-            _totalFrames = Int(roundf((morphingDuration + totalDelay) / Float(displayLink.duration)))
+            let frameRate = Float(displayLink.duration) / Float(displayLink.frameInterval)
+            _totalFrames = Int(ceil(morphingDuration / frameRate))
+            
+            let totalDelay = Float(countElements(self.text!)) * morphingCharacterDelay
+            _totalDelayFrames = Int(ceil(totalDelay / frameRate))
         }
         
-        if _originText != text && _currentFrame++ < _totalFrames + 20 {
+        if _originText != text && _currentFrame++ < _totalFrames + _totalDelayFrames + 5 {
             morphingProgress += 1.0 / Float(_totalFrames)
             self.setNeedsDisplay()
             
@@ -347,8 +361,8 @@ extension LTMorphingLabel {
 // Overrides
 extension LTMorphingLabel {
     override func didMoveToSuperview() {
-        if let s = text {
-            text = s
+        if let s = self.text {
+            self.text = s
         }
         
         // Load all morphing effects

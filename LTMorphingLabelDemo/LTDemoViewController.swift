@@ -32,7 +32,7 @@ class LTDemoViewController: UIViewController, LTMorphingLabelDelegate {
 
     }
 
-    @IBOutlet var label: LTMorphingLabel
+    @IBOutlet var label: LTMorphingLabel!
     @IBAction func changeText(sender: AnyObject) {
         label.text = text
     }
@@ -48,6 +48,10 @@ class LTDemoViewController: UIViewController, LTMorphingLabelDelegate {
             self.label.morphingEffect = .Pixelate
         case 4:
             self.label.morphingEffect = .Sparkle
+        case 5:
+            self.label.morphingEffect = .Burn
+        case 6:
+            self.label.morphingEffect = .Anvil
         default:
             self.label.morphingEffect = .Scale
         }
